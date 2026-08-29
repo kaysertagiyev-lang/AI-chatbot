@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<!--
+  NEXUS — AI Sohbet Arayüzü (demo kabuk)
+  ---------------------------------------
+  Bu dosya sadece ARAYÜZ içerir, herhangi bir AI modeline bağlı değildir.
+  Mesaj gönderme/alma akışı çalışır; botun yanıtları script içinde
+  `getBotReply()` fonksiyonunda üretilen demo metinlerdir.
+
+  Kendi modelinizi bağlamak için: script sonundaki "DEMO YANITLARI" bölümüne
+  bakın ve `getBotReply()` fonksiyonunu kendi API çağrınızla değiştirin.
+-->
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nexus — AI Sohbet Arayüzü</title>
+<meta name="description" content="Nexus AI sohbet arayüzü — modern, karanlık temalı chatbot arayüz taslağı.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%230a0908'/%3E%3Cpath d='M12 2 L14.2 9.4 L21.5 12 L14.2 14.6 L12 22 L9.8 14.6 L2.5 12 L9.8 9.4 Z' fill='%23ff5f1f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-void:#0a0908;
+    --bg-panel:#121009;
+    --bg-elevated:#1c1811;
+    --bg-elevated-2:#241f16;
+    --ember:#ff5f1f;
+    --ember-light:#ffb347;
+    --ember-deep:#b8460e;
+    --gradient-ember:linear-gradient(135deg, var(--ember) 0%, var(--ember-deep) 100%);
+    --text-primary:#f5efe4;
+    --text-muted:#948c80;
+    --text-faint:#5c564d;
+    --border:#2a251c;
+    --border-light:#3a3327;
+    --radius-sm:10px;
+    --radius-md:16px;
+    --radius-lg:22px;
+    --font-display:'Chakra Petch', sans-serif;
+    --font-body:'Inter', sans-serif;
+    --font-mono:'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html, body{ height:100%; }
+
+  body{
+    font-family:var(--font-body);
+    background:var(--bg-void);
+    color:var(--text-primary);
+    -webkit-font-smoothing:antialiased;
+    overflow:hidden;
+  }
+
+  button, textarea{ font-family:inherit; color:inherit; }
+  button{ cursor:pointer; background:none; border:none; }
+
+  :focus-visible{
+    outline:2px solid var(--ember-light);
+    outline-offset:2px;
+    border-radius:4px;
+  }
+
+  /* ---------- Layout ---------- */
+
+  .app{
+    display:grid;
+    grid-template-columns:272px 1fr;
+    height:100vh;
+    height:100dvh;
+    background:var(--bg-void);
+  }
+
+  .sidebar-backdrop{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:40;
+    opacity:0;
+    pointer-events:none;
+    display:none;
+    transition:opacity .25s ease;
+  }
+
+  /* ---------- Sidebar ---------- */
+
+  .sidebar{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    background:var(--bg-panel);
+    border-right:1px solid var(--border);
+    padding:20px 16px 16px;
+  }
+
+  .brand{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:4px 4px 20px;
+  }
+
+  .spark-mark{
+    width:34px;
+    height:34px;
+    border-radius:10px;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-light);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--ember);
+    flex-shrink:0;
+    animation:breathe 2.6s ease-in-out infinite;
+  }
+
+  .brand-text{ display:flex; flex-direction:column; line-height:1.25; min-width:0; }
+
+  .brand-name{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:1.05rem;
+    letter-spacing:0.06em;
+    color:var(--text-primary);
+  }
+
+  .brand-tag{
+    font-family:var(--font-mono);
+    font-size:0.62rem;
+    letter-spacing:0.04em;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .new-chat-btn{
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    padding:10px 14px;
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-md);
+    background:transparent;
+    color:var(--text-primary);
+    font-size:0.85rem;
+    font-weight:500;
+    transition:border-color .2s ease, background .2s ease, color .2s ease;
+  }
+
+  .new-chat-btn:hover{
+    border-color:var(--ember);
+    background:rgba(255,95,31,0.08);
+    color:var(--ember-light);
+  }
+
+  .sidebar-history{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    margin-top:20px;
+  }
+
+  .history-label{
+    display:block;
+    font-family:var(--font-mono);
+    font-size:0.62rem;
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    padding:0 6px 10px;
+  }
+
+  .history-list{ display:flex; flex-direction:column; gap:2px; }
+
+  .history-item{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    width:100%;
+    padding:9px 10px;
+    border-radius:var(--radius-sm);
+    border-left:2px solid transparent;
+    color:var(--text-muted);
+    font-size:0.85rem;
+    text-align:left;
+    transition:background .15s ease, color .15s ease;
+  }
+
+  .history-item svg{ flex-shrink:0; opacity:0.8; }
+
+  .history-item-text{
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  .history-item:hover{ background:var(--bg-elevated); color:var(--text-primary); }
+
+  .history-item.active{
+    background:var(--bg-elevated);
+    border-left-color:var(--ember);
+    color:var(--text-primary);
+  }
+
+  .sidebar-bottom{
+    margin-top:auto;
+    padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+
+  .user-chip{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:8px;
+    border-radius:var(--radius-md);
+    transition:background .15s ease;
+  }
+
+  .user-chip:hover{ background:var(--bg-elevated); }
+
+  .user-avatar{
+    width:32px;
+    height:32px;
+    border-radius:50%;
+    background:var(--gradient-ember);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:0.8rem;
+    color:var(--bg-void);
+    flex-shrink:0;
+  }
+
+  .user-info{ flex:1; min-width:0; display:flex; flex-direction:column; }
+  .user-name{ font-size:0.82rem; font-weight:500; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .user-role{ font-family:var(--font-mono); font-size:0.62rem; color:var(--text-faint); }
+
+  .icon-btn{
+    width:32px;
+    height:32px;
+    border-radius:var(--radius-sm);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--text-muted);
+    flex-shrink:0;
+    transition:background .15s ease, color .15s ease;
+  }
+
+  .icon-btn:hover{ background:var(--bg-elevated); color:var(--ember-light); }
+
+  .mobile-only{ display:none; }
+
+  /* ---------- Main / Chat ---------- */
+
+  .main{
+    display:flex;
+    flex-direction:column;
+    height:100%;
+    min-width:0;
+  }
+
+  .chat-header{
+    height:64px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:0 24px;
+    border-bottom:1px solid var(--border);
+    background:radial-gradient(circle at 0% 0%, rgba(255,95,31,0.07), transparent 55%), var(--bg-void);
+  }
+
+  .header-bot-info{ display:flex; align-items:center; gap:12px; flex:1; min-width:0; }
+
+  .bot-avatar{
+    width:38px;
+    height:38px;
+    border-radius:50%;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-light);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:var(--ember);
+    flex-shrink:0;
+    animation:breathe 2.6s ease-in-out infinite;
+  }
+
+  .bot-name{ font-family:var(--font-display); font-weight:600; font-size:0.95rem; letter-spacing:0.02em; }
+
+  .bot-status{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:2px;
+    font-family:var(--font-mono);
+    font-size:0.68rem;
+    color:var(--text-muted);
+  }
+
+  .status-dot{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--ember-light);
+    box-shadow:0 0 6px var(--ember-light);
+    animation:dotPulse 1.8s ease-in-out infinite;
+  }
+
+  .demo-badge{
+    font-family:var(--font-mono);
+    font-size:0.62rem;
+    letter-spacing:0.05em;
+    padding:5px 10px;
+    border:1px solid var(--border-light);
+    border-radius:999px;
+    color:var(--text-faint);
+    white-space:nowrap;
+  }
+
+  .messages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    padding:28px 24px;
+    display:flex;
+    flex-direction:column;
+    gap:18px;
+    scroll-behavior:smooth;
+  }
+
+  .messages::-webkit-scrollbar{ width:8px; }
+  .messages::-webkit-scrollbar-track{ background:transparent; }
+  .messages::-webkit-scrollbar-thumb{ background:var(--border-light); border-radius:8px; }
+  .messages::-webkit-scrollbar-thumb:hover{ background:var(--ember-deep); }
+
+  .msg-row{
+    display:flex;
+    gap:12px;
+    max-width:680px;
+    width:fit-content;
+  }
+
+  .msg-row.bot{ margin-right:auto; }
+  .msg-row.user{ margin-left:auto; }
+
+  .msg-avatar{
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:var(--bg-elevated-2);
+    border:1px solid var(--border-light);
+    color:var(--ember);
+    flex-shrink:0;
+    margin-top:2px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+
+  .msg-bubble-wrap{ display:flex; flex-direction:column; gap:4px; min-width:0; }
+  .msg-bubble-wrap.bot{ align-items:flex-start; }
+  .msg-bubble-wrap.user{ align-items:flex-end; }
+
+  .msg-bubble{
+    padding:12px 16px;
+    border-radius:var(--radius-md);
+    font-size:0.92rem;
+    line-height:1.55;
+    word-wrap:break-word;
+    white-space:pre-wrap;
+  }
+
+  .msg-row.bot .msg-bubble{
+    background:var(--bg-elevated);
+    border:1px solid var(--border);
+    color:var(--text-primary);
+    border-bottom-left-radius:4px;
+  }
+
+  .msg-row.user .msg-bubble{
+    background:var(--gradient-ember);
+    color:var(--bg-void);
+    font-weight:500;
+    border-bottom-right-radius:4px;
+  }
+
+  .msg-time{
+    font-family:var(--font-mono);
+    font-size:0.66rem;
+    color:var(--text-faint);
+    padding:0 4px;
+  }
+
+  .typing-bubble{ display:flex; align-items:center; gap:4px; padding:14px 16px; }
+  .typing-bubble span{
+    width:6px;
+    height:6px;
+    border-radius:50%;
+    background:var(--text-muted);
+    animation:typingBounce 1.2s ease-in-out infinite;
+  }
+  .typing-bubble span:nth-child(2){ animation-delay:.15s; }
+  .typing-bubble span:nth-child(3){ animation-delay:.3s; }
+
+  /* ---------- Composer ---------- */
+
+  .composer{
+    flex-shrink:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:8px;
+    padding:14px 24px 20px;
+    border-top:1px solid var(--border);
+    background:var(--bg-void);
+  }
+
+  .composer-box{
+    width:100%;
+    max-width:760px;
+    display:flex;
+    align-items:flex-end;
+    gap:10px;
+    background:var(--bg-panel);
+    border:1px solid var(--border-light);
+    border-radius:var(--radius-lg);
+    padding:8px 8px 8px 18px;
+    transition:border-color .2s ease, box-shadow .2s ease;
+  }
+
+  .composer-box:focus-within{
+    border-color:var(--ember);
+    box-shadow:0 0 0 3px rgba(255,95,31,0.14), 0 0 24px rgba(255,95,31,0.15);
+  }
+
+  .composer-input{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    resize:none;
+    font-size:0.95rem;
+    line-height:1.5;
+    padding:10px 0;
+    max-height:160px;
+  }
+
+  .composer-input::placeholder{ color:var(--text-faint); }
+
+  .send-btn{
+    width:40px;
+    height:40px;
+    border-radius:50%;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:var(--gradient-ember);
+    color:var(--bg-void);
+    transition:transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+  }
+
+  .send-btn:disabled{ opacity:0.3; cursor:not-allowed; }
+
+  .send-btn:not(:disabled):hover{
+    transform:scale(1.06);
+    box-shadow:0 0 20px rgba(255,95,31,0.5);
+  }
+
+  .send-btn.pulse{ animation:sendPulse .5s ease; }
+
+  .composer-hint{
+    font-family:var(--font-mono);
+    font-size:0.66rem;
+    letter-spacing:0.02em;
+    color:var(--text-faint);
+  }
+
+  /* ---------- Animations ---------- */
+
+  @keyframes breathe{
+    0%, 100%{ box-shadow:0 0 0 0 rgba(255,95,31,0.35); }
+    50%{ box-shadow:0 0 0 6px rgba(255,95,31,0); }
+  }
+
+  @keyframes dotPulse{
+    0%, 100%{ opacity:0.4; transform:scale(0.85); }
+    50%{ opacity:1; transform:scale(1); }
+  }
+
+  @keyframes typingBounce{
+    0%, 60%, 100%{ transform:translateY(0); opacity:0.4; }
+    30%{ transform:translateY(-4px); opacity:1; }
+  }
+
+  @keyframes sendPulse{
+    0%{ box-shadow:0 0 0 0 rgba(255,95,31,0.5); }
+    100%{ box-shadow:0 0 0 14px rgba(255,95,31,0); }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .spark-mark, .bot-avatar, .status-dot, .typing-bubble span, .send-btn.pulse{
+      animation:none !important;
+    }
+  }
+
+  /* ---------- Responsive ---------- */
+
+  @media (max-width:768px){
+    .app{ grid-template-columns:1fr; }
+
+    .sidebar{
+      position:fixed;
+      top:0; left:0; bottom:0;
+      width:272px;
+      z-index:50;
+      transform:translateX(-100%);
+      transition:transform .25s ease;
+    }
+
+    .app.sidebar-open .sidebar{ transform:translateX(0); }
+
+    .sidebar-backdrop{ display:block; }
+    .app.sidebar-open .sidebar-backdrop{ opacity:1; pointer-events:auto; }
+
+    .mobile-only{ display:flex; }
+    .demo-badge{ display:none; }
+
+    .chat-header{ padding:0 14px; }
+    .messages{ padding:20px 14px; }
+    .composer{ padding:10px 14px 16px; }
+    .msg-row{ max-width:calc(100% - 20px); }
+  }
+</style>
+</head>
+<body>
+
+  <div class="app" id="app">
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="spark-mark" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2 L14.2 9.4 L21.5 12 L14.2 14.6 L12 22 L9.8 14.6 L2.5 12 L9.8 9.4 Z"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <span class="brand-name">NEXUS</span>
+          <span class="brand-tag">AI Engineering Arayüzü</span>
+        </div>
+      </div>
+
+      <button class="new-chat-btn" id="newChatBtn" type="button">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        Yeni Sohbet
+      </button>
+
+      <div class="sidebar-history">
+        <span class="history-label">Son Sohbetler</span>
+        <nav class="history-list" id="historyList">
+          <button class="history-item active" type="button" data-id="1">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="history-item-text">Genel sohbet</span>
+          </button>
+          <button class="history-item" type="button" data-id="2">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="history-item-text">Kod incelemesi</span>
+          </button>
+          <button class="history-item" type="button" data-id="3">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="history-item-text">API tasarımı fikirleri</span>
+          </button>
+          <button class="history-item" type="button" data-id="4">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="history-item-text">Veri tabanı şeması</span>
+          </button>
+        </nav>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="user-chip">
+          <div class="user-avatar">G</div>
+          <div class="user-info">
+            <span class="user-name">Geliştirici</span>
+            <span class="user-role">Ücretsiz plan</span>
+          </div>
+          <button class="icon-btn" type="button" aria-label="Ayarlar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="chat-header">
+        <button class="icon-btn mobile-only" id="menuToggle" type="button" aria-label="Menüyü aç">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+
+        <div class="header-bot-info">
+          <div class="bot-avatar" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.2 9.4 L21.5 12 L14.2 14.6 L12 22 L9.8 14.6 L2.5 12 L9.8 9.4 Z"/></svg>
+          </div>
+          <div>
+            <div class="bot-name">Nexus</div>
+            <div class="bot-status"><span class="status-dot" aria-hidden="true"></span>Çevrimiçi</div>
+          </div>
+        </div>
+
+        <span class="demo-badge">DEMO ARAYÜZ</span>
+      </header>
+
+      <div class="messages" id="messages" role="log" aria-live="polite" aria-label="Sohbet mesajları"></div>
+
+      <form class="composer" id="composerForm">
+        <div class="composer-box">
+          <textarea
+            id="messageInput"
+            class="composer-input"
+            placeholder="Mesajınızı yazın..."
+            rows="1"
+            aria-label="Mesajınızı yazın"
+          ></textarea>
+          <button type="submit" class="send-btn" id="sendBtn" aria-label="Gönder" disabled>
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9 22 2Z"/></svg>
+          </button>
+        </div>
+        <span class="composer-hint">Enter ile gönder · Shift + Enter yeni satır</span>
+      </form>
+    </main>
+
+  </div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Sabitler ---------- */
+
+  var SPARK_ICON_SMALL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.2 9.4 L21.5 12 L14.2 14.6 L12 22 L9.8 14.6 L2.5 12 L9.8 9.4 Z"/></svg>';
+
+  var WELCOME_TEXT = 'Merhaba! Ben Nexus. Bu bir arayüz taslağıdır — bir şeyler yazıp gönder butonunu deneyebilirsin.';
+
+  /*
+    DEMO YANITLARI
+    ----------------
+    Bu proje bilinçli olarak bir AI modeline bağlı DEĞİLDİR.
+    Gerçek entegrasyon için `getBotReply` fonksiyonunu kendi API
+    çağrınızla değiştirin, örnek:
+
+    async function getBotReply(userText) {
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userText })
+      });
+      const data = await res.json();
+      return data.reply;
+    }
+
+    Şimdilik arayüzün uçtan uca çalıştığını göstermek için
+    sabit/döngüsel demo metinler döndürülüyor.
+  */
+  var DEMO_REPLIES = [
+    'Mesajını aldım. Bu arayüz şu an demo modunda — gerçek yanıtlar için kendi modelini bağlayabilirsin.',
+    'Anlaşıldı! Backend bağlandığında buradan gerçek yanıtlar dönecek.',
+    'Şu an örnek bir yanıt gösteriyorum. Arayüz, mesaj gönderme/alma akışını simüle ediyor.',
+    'Not edildi. `getBotReply()` fonksiyonunu kendi API\u2019nizle değiştirmeyi unutmayın.'
+  ];
+  var replyIndex = 0;
+
+  /* ---------- Elementler ---------- */
+
+  var app = document.getElementById('app');
+  var sidebar = document.getElementById('sidebar');
+  var backdrop = document.getElementById('sidebarBackdrop');
+  var menuToggle = document.getElementById('menuToggle');
+  var newChatBtn = document.getElementById('newChatBtn');
+  var historyList = document.getElementById('historyList');
+  var messagesEl = document.getElementById('messages');
+  var form = document.getElementById('composerForm');
+  var input = document.getElementById('messageInput');
+  var sendBtn = document.getElementById('sendBtn');
+
+  /* ---------- Mobil menü ---------- */
+
+  function openSidebar(){ app.classList.add('sidebar-open'); }
+  function closeSidebar(){ app.classList.remove('sidebar-open'); }
+
+  menuToggle.addEventListener('click', function () {
+    if (app.classList.contains('sidebar-open')) { closeSidebar(); }
+    else { openSidebar(); }
+  });
+  backdrop.addEventListener('click', closeSidebar);
+
+  /* ---------- Sohbet geçmişi (demo, statik) ---------- */
+
+  historyList.addEventListener('click', function (e) {
+    var item = e.target.closest('.history-item');
+    if (!item) return;
+    var all = historyList.querySelectorAll('.history-item');
+    for (var i = 0; i < all.length; i++) { all[i].classList.remove('active'); }
+    item.classList.add('active');
+    closeSidebar();
+  });
+
+  /* ---------- Textarea otomatik yükseklik ---------- */
+
+  function autoResize(){
+    input.style.height = 'auto';
+    input.style.height = Math.min(input.scrollHeight, 160) + 'px';
+  }
+
+  input.addEventListener('input', function () {
+    autoResize();
+    sendBtn.disabled = input.value.trim().length === 0;
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!sendBtn.disabled && typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else if (!sendBtn.disabled) {
+        form.dispatchEvent(new Event('submit', { cancelable: true }));
+      }
+    }
+  });
+
+  /* ---------- Mesaj oluşturma ---------- */
+
+  function timeNow(){
+    return new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function scrollToBottom(){
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function appendMessage(text, sender){
+    var row = document.createElement('div');
+    row.className = 'msg-row ' + sender;
+
+    if (sender === 'bot') {
+      var avatar = document.createElement('div');
+      avatar.className = 'msg-avatar';
+      avatar.innerHTML = SPARK_ICON_SMALL;
+      row.appendChild(avatar);
+    }
+
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-bubble-wrap ' + sender;
+
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.textContent = text;
+
+    var time = document.createElement('span');
+    time.className = 'msg-time';
+    time.textContent = timeNow();
+
+    wrap.appendChild(bubble);
+    wrap.appendChild(time);
+    row.appendChild(wrap);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function showTyping(){
+    var row = document.createElement('div');
+    row.className = 'msg-row bot';
+    row.id = 'typingRow';
+
+    var avatar = document.createElement('div');
+    avatar.className = 'msg-avatar';
+    avatar.innerHTML = SPARK_ICON_SMALL;
+
+    var wrap = document.createElement('div');
+    wrap.className = 'msg-bubble-wrap bot';
+
+    var bubble = document.createElement('div');
+    bubble.className = 'msg-bubble typing-bubble';
+    bubble.setAttribute('aria-label', 'Nexus yazıyor');
+    bubble.innerHTML = '<span></span><span></span><span></span>';
+
+    wrap.appendChild(bubble);
+    row.appendChild(avatar);
+    row.appendChild(wrap);
+    messagesEl.appendChild(row);
+    scrollToBottom();
+  }
+
+  function hideTyping(){
+    var row = document.getElementById('typingRow');
+    if (row) row.remove();
+  }
+
+  function getBotReply(){
+    var reply = DEMO_REPLIES[replyIndex % DEMO_REPLIES.length];
+    replyIndex++;
+    return reply;
+  }
+
+  /* ---------- Form gönderimi ---------- */
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var text = input.value.trim();
+    if (!text) return;
+
+    appendMessage(text, 'user');
+    input.value = '';
+    autoResize();
+    sendBtn.disabled = true;
+
+    sendBtn.classList.remove('pulse');
+    void sendBtn.offsetWidth; /* animasyonu yeniden tetiklemek için */
+    sendBtn.classList.add('pulse');
+
+    showTyping();
+    var delay = 700 + Math.random() * 700;
+    setTimeout(function () {
+      hideTyping();
+      appendMessage(getBotReply(), 'bot');
+    }, delay);
+  });
+
+  /* ---------- Yeni sohbet ---------- */
+
+  newChatBtn.addEventListener('click', function () {
+    messagesEl.innerHTML = '';
+    appendMessage(WELCOME_TEXT, 'bot');
+    closeSidebar();
+    input.focus();
+  });
+
+  /* ---------- Başlangıç ---------- */
+
+  appendMessage(WELCOME_TEXT, 'bot');
+  autoResize();
+  input.focus();
+
+})();
+</script>
+</body>
+</html>
